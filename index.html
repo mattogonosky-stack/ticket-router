@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ticket Router</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+:root{
+  --bg:#0f1117;--bg2:#161b26;--bg3:#1e2535;
+  --border:#2a3045;--border2:#3a4460;
+  --text:#e2e8f0;--text2:#8892a4;--text3:#525e72;
+  --accent:#4f8ef7;--accent2:#2d5fc9;
+  --green:#34d399;--green-bg:#0d2b20;
+  --amber:#fbbf24;--amber-bg:#2b1f0a;
+  --red:#f87171;--red-bg:#2b0f0f;
+  --purple:#a78bfa;--purple-bg:#1e1530;
+  --teal:#22d3ee;--teal-bg:#0a2530;
+  --mono:'IBM Plex Mono','Courier New',monospace;
+  --sans:'IBM Plex Sans','Segoe UI',Arial,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh;overflow:hidden;font-size:14px}
+.shell{display:flex;height:100vh}
+
+/* ── Sidebar ── */
+.sidebar{width:224px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column}
+.logo{padding:16px 18px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.logo-icon{width:30px;height:30px;background:var(--accent2);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:15px}
+.logo-text{font-family:var(--mono);font-size:13px;font-weight:500}
+.logo-sub{font-size:10px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-top:1px}
+nav{flex:1;padding:10px 8px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+.nav-section{font-size:10px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;padding:12px 8px 4px}
+.nav-btn{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:6px;font-size:13px;color:var(--text2);cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background .15s,color .15s}
+.nav-btn:hover{background:var(--bg3);color:var(--text)}
+.nav-btn.active{background:var(--bg3);color:var(--text)}
+.nav-badge{margin-left:auto;font-family:var(--mono);font-size:11px;background:var(--amber-bg);color:var(--amber);padding:1px 6px;border-radius:4px}
+.sidebar-footer{padding:10px 14px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);font-family:var(--mono);display:flex;flex-direction:column;gap:4px}
+.db-status{display:flex;align-items:center;gap:6px}
+.db-dot{width:7px;height:7px;border-radius:50%;background:var(--text3);flex-shrink:0;transition:background .3s}
+.db-dot.ok{background:var(--green)}
+.db-dot.err{background:var(--red)}
+.db-dot.loading{background:var(--amber);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── Main ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{padding:0 22px;height:54px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;background:var(--bg2);flex-shrink:0}
+.topbar-title{font-family:var(--mono);font-size:14px;font-weight:500}
+.topbar-crumb{color:var(--text3);font-size:13px}
+.topbar-actions{margin-left:auto;display:flex;gap:8px;align-items:center}
+
+/* ── Buttons ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:6px;font-size:13px;font-family:var(--sans);cursor:pointer;border:1px solid var(--border2);background:var(--bg3);color:var(--text);transition:background .15s}
+.btn:hover{background:var(--border)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-primary{background:var(--accent2);border-color:var(--accent);color:#fff}
+.btn-primary:hover:not(:disabled){background:var(--accent)}
+.btn-success{background:var(--green-bg);border-color:var(--green);color:var(--green)}
+.btn-danger{background:var(--red-bg);border-color:var(--red);color:var(--red)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-ghost{background:none;border-color:transparent;color:var(--text2)}
+.btn-ghost:hover{background:var(--bg3);color:var(--text)}
+
+/* ── Views ── */
+.view{display:none;flex:1;overflow:hidden}
+.view.active{display:flex}
+
+/* ── Config screen ── */
+#view-config{flex-direction:column;align-items:center;justify-content:center;padding:40px}
+.config-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:36px 40px;max-width:520px;width:100%}
+.config-title{font-family:var(--mono);font-size:16px;font-weight:500;margin-bottom:8px}
+.config-sub{font-size:13px;color:var(--text2);line-height:1.65;margin-bottom:24px}
+.cfg-field{margin-bottom:14px}
+.cfg-field label{display:block;font-size:12px;color:var(--text2);margin-bottom:5px;font-weight:500}
+.cfg-field input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:12px;padding:9px 11px}
+.cfg-field input:focus{outline:none;border-color:var(--accent)}
+.cfg-hint{font-size:11px;color:var(--text3);margin-top:4px}
+.cfg-error{font-size:12px;color:var(--red);margin-top:10px;display:none}
+
+/* ── Intake ── */
+#view-intake{gap:0}
+.intake-left{width:340px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:16px}
+.intake-right{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:16px}
+.form-section-hdr{font-size:10px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:12px;color:var(--text2);font-weight:500}
+.field input,.field select,.field textarea{background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--sans);font-size:13px;padding:8px 10px;transition:border-color .15s;width:100%}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--accent)}
+.field textarea{min-height:95px;resize:vertical;line-height:1.55}
+.field select option{background:var(--bg3)}
+.field-hint{font-size:11px;color:var(--text3)}
+
+/* ── Cards ── */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px 18px}
+.card-title{font-size:10px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px}
+
+/* ── Routing result ── */
+.rec-team-row{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.rec-team-name{font-family:var(--mono);font-size:20px;font-weight:500}
+.conf-pill{font-family:var(--mono);font-size:12px;padding:3px 10px;border-radius:20px;margin-left:auto}
+.conf-high{background:var(--green-bg);color:var(--green)}
+.conf-mid{background:var(--amber-bg);color:var(--amber)}
+.conf-low{background:var(--red-bg);color:var(--red)}
+.kw-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.kw-chip{font-family:var(--mono);font-size:11px;background:var(--purple-bg);color:var(--purple);padding:3px 8px;border-radius:4px}
+.ph-chip{font-family:var(--mono);font-size:11px;background:var(--teal-bg);color:var(--teal);padding:3px 8px;border-radius:4px}
+.rec-reason{font-size:13px;color:var(--text2);line-height:1.65}
+.rec-reason b{color:var(--text)}
+.score-list{display:flex;flex-direction:column;gap:7px}
+.score-row{display:flex;align-items:center;gap:10px}
+.score-team{font-size:12px;color:var(--text2);width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0}
+.score-track{flex:1;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden}
+.score-fill{height:100%;border-radius:3px;background:var(--border2);transition:width .4s}
+.score-fill.top{background:var(--accent)}
+.score-val{font-family:var(--mono);font-size:11px;color:var(--text3);min-width:28px;text-align:right}
+.team-kb-mini{border:1px solid var(--teal-bg);border-radius:8px;padding:12px 14px;background:rgba(10,37,48,0.5)}
+.team-kb-mini-desc{font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:8px}
+.resp-chips{display:flex;flex-wrap:wrap;gap:5px}
+.resp-chip{font-size:11px;background:var(--bg3);color:var(--text2);border:1px solid var(--border);padding:2px 8px;border-radius:4px}
+.similar-list{display:flex;flex-direction:column;gap:7px}
+.similar-item{padding:10px 12px;border:1px solid var(--border);border-radius:8px;transition:background .15s}
+.similar-item:hover{background:var(--bg3);border-color:var(--border2)}
+.similar-id{font-family:var(--mono);font-size:12px;color:var(--accent);margin-bottom:3px}
+.similar-summary{font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:5px}
+.similar-team-chip{font-size:11px;padding:2px 8px;border-radius:4px;background:var(--green-bg);color:var(--green);font-weight:500}
+.action-row{display:flex;gap:8px;flex-wrap:wrap}
+.empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--text3);text-align:center;padding:40px}
+.empty-state .big-icon{font-size:44px;opacity:.3}
+.empty-state p{font-size:13px;max-width:280px;line-height:1.6}
+.loading-state{flex:1;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:13px;gap:10px}
+
+/* ── Queue ── */
+#view-queue{flex-direction:column;overflow:hidden}
+.queue-toolbar{padding:14px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;background:var(--bg2);flex-wrap:wrap}
+.queue-search{background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--sans);font-size:13px;padding:7px 12px;width:240px}
+.queue-search:focus{outline:none;border-color:var(--accent)}
+.filter-tabs{display:flex;gap:3px}
+.filter-tab{padding:6px 11px;border-radius:6px;font-size:12px;cursor:pointer;border:none;background:none;color:var(--text2);transition:background .15s}
+.filter-tab:hover{background:var(--bg3);color:var(--text)}
+.filter-tab.active{background:var(--bg3);color:var(--text);font-weight:500}
+.queue-count{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--text3)}
+.queue-table-wrap{flex:1;overflow-y:auto}
+table{width:100%;border-collapse:collapse}
+thead tr{position:sticky;top:0;background:var(--bg2);z-index:1}
+th{text-align:left;padding:9px 14px;font-size:10px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:11px 14px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
+tbody tr{transition:background .1s;cursor:pointer}
+tbody tr:hover{background:var(--bg2)}
+tbody tr:hover .row-actions{opacity:1}
+.td-id{font-family:var(--mono);font-size:12px;color:var(--accent);white-space:nowrap}
+.td-summary{max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text2)}
+.td-age{font-family:var(--mono);font-size:12px;color:var(--text3)}
+.status-chip{font-size:11px;padding:2px 8px;border-radius:4px;font-weight:500;white-space:nowrap;display:inline-block}
+.s-new{background:#0d1f3c;color:#6ba3f5}
+.s-follow{background:var(--amber-bg);color:var(--amber)}
+.s-review{background:var(--red-bg);color:var(--red)}
+.s-closed{background:var(--green-bg);color:var(--green)}
+.conf-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:middle}
+.row-actions{opacity:0;display:flex;gap:4px;transition:opacity .15s}
+
+/* ── Dashboard ── */
+#view-dashboard{flex-direction:column;overflow-y:auto;padding:22px;gap:18px}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.kpi-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.kpi-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px}
+.kpi-val{font-family:var(--mono);font-size:24px;font-weight:500}
+.kpi-sub{font-size:11px;color:var(--text3);margin-top:3px}
+.kpi-red{color:var(--red)}.kpi-amber{color:var(--amber)}.kpi-green{color:var(--green)}.kpi-accent{color:var(--accent)}
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.dash-wide{grid-column:1/-1}
+.coach-item{padding:9px 0;border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:flex-start}
+.coach-item:last-child{border-bottom:none}
+.coach-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.coach-label{font-size:13px;color:var(--text);margin-bottom:2px}
+.coach-val{font-family:var(--mono);font-size:12px}
+.coach-action{font-size:12px;color:var(--text3);margin-top:2px}
+
+/* ── Keywords ── */
+#view-keywords{flex-direction:column;overflow-y:auto;padding:22px;gap:16px}
+.kw-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.kw-search{background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--sans);font-size:13px;padding:7px 12px;width:260px}
+.kw-search:focus{outline:none;border-color:var(--accent)}
+.kw-page-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+.kw-team-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px 18px}
+.kw-team-header{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.kw-team-name-display{font-family:var(--mono);font-size:13px;font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kw-team-name-input{font-family:var(--mono);font-size:13px;background:var(--bg3);border:1px solid var(--accent);border-radius:5px;color:var(--text);padding:4px 8px;flex:1}
+.kw-team-name-input:focus{outline:none}
+.kw-section-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin:10px 0 6px;display:block}
+.kb-section-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin:10px 0 6px;display:flex;align-items:center;justify-content:space-between}
+.kw-chips{display:flex;flex-wrap:wrap;gap:5px;min-height:24px}
+.kw-edit-chip{font-family:var(--mono);font-size:11px;background:var(--purple-bg);color:var(--purple);border:1px solid rgba(167,139,250,.2);padding:3px 8px;border-radius:4px;display:flex;align-items:center;gap:4px}
+.ph-edit-chip{font-family:var(--mono);font-size:11px;background:var(--teal-bg);color:var(--teal);border:1px solid rgba(34,211,238,.2);padding:3px 8px;border-radius:4px;display:flex;align-items:center;gap:4px}
+.kw-remove{cursor:pointer;color:var(--text3);font-size:14px;line-height:1;opacity:.7}
+.kw-remove:hover{color:var(--red);opacity:1}
+.kw-add-row{display:flex;gap:6px;margin-top:8px}
+.kw-add-input{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:12px;padding:6px 9px}
+.kw-add-input:focus{outline:none;border-color:var(--accent)}
+.add-team-card{border:1px dashed var(--border2);border-radius:10px;padding:20px;display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer;transition:background .15s}
+.add-team-card:hover{background:var(--bg2)}
+
+/* ── KB ── */
+#view-kb{flex-direction:column;overflow-y:auto;padding:22px;gap:16px}
+.kb-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+.kb-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px 18px}
+.kb-card-header{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}
+.kb-team-name{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--teal);flex:1}
+.kb-desc-area{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--sans);font-size:13px;padding:9px 11px;line-height:1.6;min-height:70px;resize:vertical}
+.kb-desc-area:focus{outline:none;border-color:var(--teal)}
+.kb-resp-chips{display:flex;flex-wrap:wrap;gap:5px;min-height:24px}
+.kb-resp-chip-edit{font-size:11px;background:var(--bg3);color:var(--text2);border:1px solid var(--border);padding:3px 8px;border-radius:4px;display:flex;align-items:center;gap:4px}
+.kb-auto-chip{font-size:11px;background:rgba(52,211,153,.08);color:var(--green);border:1px solid rgba(52,211,153,.2);padding:3px 8px;border-radius:4px}
+.kb-ticket-list{display:flex;flex-direction:column;gap:4px;max-height:120px;overflow-y:auto}
+.kb-ticket-item{font-size:12px;color:var(--text2);padding:4px 8px;background:var(--bg3);border-radius:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kb-ticket-id{font-family:var(--mono);font-size:11px;color:var(--accent);margin-right:6px}
+
+/* ── Modal ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:26px;width:500px;max-height:85vh;overflow-y:auto}
+.modal-title{font-family:var(--mono);font-size:15px;margin-bottom:18px}
+.modal-field{margin-bottom:13px}
+.modal-field label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px;font-weight:500}
+.modal-field input,.modal-field select,.modal-field textarea{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--sans);font-size:13px;padding:8px 10px}
+.modal-field input:focus,.modal-field select:focus,.modal-field textarea:focus{outline:none;border-color:var(--accent)}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:22px;right:22px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:11px 16px;font-size:13px;z-index:200;display:flex;align-items:center;gap:9px;transform:translateY(16px);opacity:0;transition:transform .2s,opacity .2s;pointer-events:none;max-width:340px}
+.toast.show{transform:translateY(0);opacity:1}
+
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--border2)}
+</style>
+</head>
+<body>
+<div class="shell">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">⇄</div>
+      <div><div class="logo-text">TicketRouter</div><div class="logo-sub">Ops</div></div>
+    </div>
+    <nav>
+      <button class="nav-btn active" id="nav-intake" onclick="showView('intake',this)">📥 New Ticket</button>
+      <button class="nav-btn" id="nav-queue" onclick="showView('queue',this)">📋 Queue <span class="nav-badge" id="queue-badge">—</span></button>
+      <button class="nav-btn" id="nav-dashboard" onclick="showView('dashboard',this)">📊 Dashboard</button>
+      <div class="nav-section">Config</div>
+      <button class="nav-btn" id="nav-keywords" onclick="showView('keywords',this)">🔑 Keywords &amp; Phrases</button>
+      <button class="nav-btn" id="nav-kb" onclick="showView('kb',this)">📖 Knowledge Base</button>
+      <button class="nav-btn" id="nav-config" onclick="showView('config',this)">⚙ Connection</button>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="db-status"><div class="db-dot" id="db-dot"></div><span id="db-status-text">Not connected</span></div>
+      <div id="db-team-count" style="color:var(--text3);font-size:10px"></div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <span class="topbar-title" id="topbar-title">new_ticket</span>
+      <span class="topbar-crumb" id="topbar-crumb">/ intake</span>
+      <div class="topbar-actions" id="topbar-actions">
+        <button class="btn btn-primary" onclick="runRoute()">▶ Route ticket</button>
+      </div>
+    </div>
+
+    <!-- CONFIG -->
+    <div class="view" id="view-config">
+      <div class="config-card">
+        <div class="config-title">Supabase connection</div>
+        <div class="config-sub">Enter your Supabase project URL and anon key. These are saved in your browser's localStorage and never leave your machine.</div>
+        <div class="cfg-field">
+          <label>Project URL</label>
+          <input id="cfg-url" type="text" placeholder="https://xxxxxxxxxxxx.supabase.co">
+          <div class="cfg-hint">Settings → API → Project URL</div>
+        </div>
+        <div class="cfg-field">
+          <label>Anon / public key</label>
+          <input id="cfg-key" type="password" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…">
+          <div class="cfg-hint">Settings → API → Project API keys → anon public</div>
+        </div>
+        <div id="cfg-error" class="cfg-error"></div>
+        <div class="action-row" style="margin-top:6px">
+          <button class="btn btn-primary" onclick="saveConfig()">Connect</button>
+          <button class="btn btn-ghost" onclick="showView('intake',document.getElementById('nav-intake'))">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- INTAKE -->
+    <div class="view active" id="view-intake">
+      <div class="intake-left">
+        <div class="form-section-hdr">Ticket details</div>
+        <div class="field"><label>Ticket ID *</label><input id="f-id" type="text" placeholder="SCTASK… or INC…"></div>
+        <div class="field"><label>Summary / ticket text *</label><textarea id="f-text" placeholder="Paste full ticket description…"></textarea></div>
+        <div class="field"><label>Priority</label>
+          <select id="f-priority"><option>Normal</option><option>High</option><option>Critical</option></select></div>
+        <div class="field"><label>Submitted by</label><input id="f-submitter" placeholder="Name or LID"></div>
+        <div class="form-section-hdr" style="margin-top:4px">Post-review</div>
+        <div class="field"><label>Override team</label><select id="f-override"><option value="">— use recommendation —</option></select>
+          <span class="field-hint">Set only if you disagree with the suggestion.</span></div>
+        <div class="field"><label>Reviewed by</label><input id="f-reviewer" placeholder="Your name"></div>
+        <div class="field"><label>Notes</label><textarea id="f-notes" style="min-height:60px" placeholder="Override reason, follow-up…"></textarea></div>
+        <button class="btn" style="justify-content:center" onclick="openLogModal()">✓ Confirm &amp; log ticket</button>
+      </div>
+      <div class="intake-right" id="intake-right">
+        <div class="empty-state">
+          <div class="big-icon">⇄</div>
+          <p>Paste a ticket summary and click <strong>Route ticket</strong> to get a recommendation.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- QUEUE -->
+    <div class="view" id="view-queue">
+      <div class="queue-toolbar">
+        <input class="queue-search" type="text" placeholder="Search tickets…" oninput="filterQueue(this.value)">
+        <div class="filter-tabs">
+          <button class="filter-tab active" onclick="setQFilter('all',this)">All</button>
+          <button class="filter-tab" onclick="setQFilter('follow',this)">Follow-up</button>
+          <button class="filter-tab" onclick="setQFilter('review',this)">Review needed</button>
+          <button class="filter-tab" onclick="setQFilter('new',this)">New</button>
+        </div>
+        <span class="queue-count" id="queue-count"></span>
+        <button class="btn btn-sm btn-ghost" onclick="loadQueue(true)">⟳ Refresh</button>
+      </div>
+      <div class="queue-table-wrap">
+        <table><thead><tr>
+          <th>Ticket ID</th><th>Summary</th><th>Suggested</th><th>Final</th>
+          <th>Status</th><th>Age</th><th>Conf.</th><th></th>
+        </tr></thead><tbody id="queue-tbody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="view" id="view-dashboard">
+      <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-label">Accuracy</div><div class="kpi-val kpi-red" id="d-accuracy">—</div><div class="kpi-sub" id="d-acc-sub">0 reviewed</div></div>
+        <div class="kpi-card"><div class="kpi-label">Open queue</div><div class="kpi-val kpi-amber" id="d-open">—</div><div class="kpi-sub">Pending triage</div></div>
+        <div class="kpi-card"><div class="kpi-label">Route changes</div><div class="kpi-val kpi-amber" id="d-changes">—</div><div class="kpi-sub">Overrides logged</div></div>
+        <div class="kpi-card"><div class="kpi-label">Avg confidence</div><div class="kpi-val kpi-accent" id="d-avgconf">—</div><div class="kpi-sub">At intake</div></div>
+      </div>
+      <div class="dash-grid">
+        <div class="card"><div class="card-title">Volume by team</div><div class="score-list" id="d-team-scores"></div></div>
+        <div class="card"><div class="card-title">Confidence distribution</div><div id="d-conf-dist" style="display:flex;flex-direction:column;gap:8px"></div></div>
+        <div class="card dash-wide"><div class="card-title">Coaching &amp; tuning focus</div><div id="d-coaching"></div></div>
+        <div class="card dash-wide">
+          <div class="card-title">Calibration queue</div>
+          <table style="width:100%"><thead><tr><th>Ticket ID</th><th>Suggested</th><th>Final</th><th>Reason</th><th>Conf.</th><th></th></tr></thead>
+          <tbody id="d-tuning-tbody"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- KEYWORDS & PHRASES -->
+    <div class="view" id="view-keywords">
+      <div style="width:100%">
+        <div class="kw-toolbar" style="margin-bottom:16px">
+          <input class="kw-search" type="text" placeholder="Filter teams…" oninput="filterKwTeams(this.value)" id="kw-filter">
+          <span style="font-size:12px;color:var(--text2)">
+            <span style="color:var(--purple)">■ Keywords</span> = single words (1–2× weight) &nbsp;
+            <span style="color:var(--teal)">■ Phrases</span> = multi-word (3× weight)
+          </span>
+          <button class="btn btn-sm" style="margin-left:auto" onclick="openAddTeamModal()">+ Add team</button>
+        </div>
+        <div class="kw-page-grid" id="kw-teams-container"></div>
+      </div>
+    </div>
+
+    <!-- KNOWLEDGE BASE -->
+    <div class="view" id="view-kb">
+      <div style="width:100%">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap">
+          <p style="color:var(--text2);font-size:13px;line-height:1.65;flex:1;max-width:680px">
+            Team descriptions and responsibilities stored in Supabase.
+            <span style="color:var(--green)">Auto-populated examples</span> come from confirmed tickets.
+          </p>
+          <button class="btn btn-sm btn-ghost" onclick="loadKB(true)">⟳ Refresh</button>
+        </div>
+        <div class="kb-grid" id="kb-container"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LOG MODAL -->
+<div class="modal-overlay" id="log-modal">
+  <div class="modal">
+    <div class="modal-title">Log ticket to queue</div>
+    <div class="modal-field"><label>Ticket ID</label><input id="m-id" readonly></div>
+    <div class="modal-field"><label>Suggested team</label><input id="m-suggested" readonly></div>
+    <div class="modal-field"><label>Final team</label><select id="m-final"></select></div>
+    <div class="modal-field"><label>Was suggestion correct?</label>
+      <select id="m-correct"><option value="">— pending —</option><option>Yes</option><option>No</option></select></div>
+    <div class="modal-field"><label>Status</label>
+      <select id="m-status"><option>New</option><option>Needs Follow-up</option><option>Reviewed</option><option>Closed</option></select></div>
+    <div class="modal-field"><label>Reviewed by</label><input id="m-reviewer" placeholder="Name"></div>
+    <div class="modal-field"><label>Notes</label><textarea id="m-notes" style="min-height:56px"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="cancelLogModal()">Cancel</button>
+      <button class="btn btn-primary" id="log-save-btn">Save to log</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD TEAM MODAL -->
+<div class="modal-overlay" id="modal-add-team">
+  <div class="modal" style="width:420px">
+    <div class="modal-title">Add new team</div>
+    <div class="modal-field"><label>Team name *</label><input id="at-name" placeholder="e.g. Network Operations"></div>
+    <div class="modal-field"><label>Keywords (comma-separated)</label><input id="at-kw" placeholder="network, firewall, vpn"></div>
+    <div class="modal-field"><label>Key phrases (one per line)</label><textarea id="at-ph" style="min-height:60px" placeholder="network outage&#10;firewall rule change"></textarea></div>
+    <div class="modal-field"><label>Description</label><textarea id="at-desc" style="min-height:56px" placeholder="Handles network infrastructure tickets…"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-add-team')">Cancel</button>
+      <button class="btn btn-primary" onclick="addTeam()">Add team</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span id="toast-icon">✓</span>&nbsp;<span id="toast-msg">Done.</span></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  CONFIG & SUPABASE CLIENT
+// ═══════════════════════════════════════════════════════
+let SB_URL = localStorage.getItem('tr_sb_url') || '';
+let SB_KEY  = localStorage.getItem('tr_sb_key') || '';
+
+// Minimal Supabase REST client — no SDK needed
+const sb = {
+  headers(extra={}) {
+    return { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}`,
+             'Content-Type': 'application/json', ...extra };
+  },
+  async get(table, params='') {
+    const r = await fetch(`${SB_URL}/rest/v1/${table}?${params}`, { headers: sb.headers({'Accept':'application/json'}) });
+    if (!r.ok) throw new Error(`GET ${table}: ${r.status} ${await r.text()}`);
+    return r.json();
+  },
+  async post(table, body) {
+    const r = await fetch(`${SB_URL}/rest/v1/${table}`, {
+      method: 'POST', headers: sb.headers({ 'Prefer': 'return=minimal' }),
+      body: JSON.stringify(body)
+    });
+    if (!r.ok) throw new Error(`POST ${table}: ${r.status} ${await r.text()}`);
+    return r;
+  },
+  async upsert(table, body) {
+    const r = await fetch(`${SB_URL}/rest/v1/${table}`, {
+      method: 'POST', headers: sb.headers({ 'Prefer': 'resolution=merge-duplicates,return=minimal' }),
+      body: JSON.stringify(body)
+    });
+    if (!r.ok) throw new Error(`UPSERT ${table}: ${r.status} ${await r.text()}`);
+    return r;
+  },
+  async patch(table, id, body) {
+    const r = await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`, {
+      method: 'PATCH', headers: sb.headers({ 'Prefer': 'return=minimal' }),
+      body: JSON.stringify(body)
+    });
+    if (!r.ok) throw new Error(`PATCH ${table}: ${r.status} ${await r.text()}`);
+    return r;
+  },
+  async del(table, filter) {
+    const r = await fetch(`${SB_URL}/rest/v1/${table}?${filter}`, {
+      method: 'DELETE', headers: sb.headers()
+    });
+    if (!r.ok) throw new Error(`DELETE ${table}: ${r.status} ${await r.text()}`);
+    return r;
+  }
+};
+
+// ═══════════════════════════════════════════════════════
+//  IN-MEMORY CACHE (loaded once from Supabase)
+// ═══════════════════════════════════════════════════════
+let kwData    = {};   // { teamName: { keywords:[], phrases:[] } }
+let kbData    = {};   // { teamName: { description:'', responsibilities:[], autoTickets:[] } }
+let ticketLog = [];
+let lastRoute = null;
+let connected = false;
+let qFilter   = 'all';
+let qSearch   = '';
+let kwFilter  = '';
+
+// ═══════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════
+function tid(t){ return t.replace(/[^a-z0-9]/gi,'_'); }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+let _toastTimer=null;
+function showToast(msg,icon='✓'){
+  if(_toastTimer) clearTimeout(_toastTimer);
+  const el=document.getElementById('toast');
+  document.getElementById('toast-msg').textContent=msg;
+  document.getElementById('toast-icon').textContent=icon;
+  el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+  _toastTimer=setTimeout(()=>{el.classList.remove('show');_toastTimer=null;},3000);
+}
+
+// ═══════════════════════════════════════════════════════
+//  CONNECTION & DATA LOADING
+// ═══════════════════════════════════════════════════════
+function setStatus(state, msg) {
+  const dot  = document.getElementById('db-dot');
+  const text = document.getElementById('db-status-text');
+  dot.className  = 'db-dot ' + state;
+  text.textContent = msg;
+}
+
+async function connect() {
+  if (!SB_URL || !SB_KEY) { showView('config', document.getElementById('nav-config')); return; }
+  setStatus('loading', 'Connecting…');
+  try {
+    // Load all core data in parallel
+    const [teamsRows, kwRows, phRows, respRows] = await Promise.all([
+      sb.get('teams', 'select=team_name,description&order=team_name'),
+      sb.get('keywords', 'select=team_name,keyword&order=team_name'),
+      sb.get('phrases', 'select=team_name,phrase&order=team_name'),
+      sb.get('responsibilities', 'select=team_name,responsibility&order=team_name'),
+    ]);
+
+    // Build kwData
+    kwData = {};
+    teamsRows.forEach(r => {
+      kwData[r.team_name] = { keywords: [], phrases: [] };
+      kbData[r.team_name] = { description: r.description || '', responsibilities: [], autoTickets: [] };
+    });
+    kwRows.forEach(r  => { if (kwData[r.team_name]) kwData[r.team_name].keywords.push(r.keyword); });
+    phRows.forEach(r  => { if (kwData[r.team_name]) kwData[r.team_name].phrases.push(r.phrase); });
+    respRows.forEach(r=> { if (kbData[r.team_name]) kbData[r.team_name].responsibilities.push(r.responsibility); });
+
+    // Load tickets (limit 500 for performance; pagination could be added)
+    const logRows = await sb.get('ticket_log', 'select=*&order=created_at.desc&limit=500');
+    ticketLog = logRows.map(r => ({
+      id: r.id, summary: r.summary, suggested: r.suggested, final: r.final,
+      correct: r.correct, status: r.status, date: r.date, reviewer: r.reviewer,
+      notes: r.notes, confidence: parseFloat(r.confidence)||0,
+      routeChanged: r.route_changed, needsCalibration: r.needs_calibration,
+    }));
+
+    autoPopulateKB();
+    connected = true;
+    const teamCount = teamsRows.length;
+    setStatus('ok', `Connected`);
+    document.getElementById('db-team-count').textContent = `${teamCount} teams · ${ticketLog.length} tickets`;
+    updateBadge();
+    updateOverrideDropdown();
+    showToast(`Loaded ${teamCount} teams, ${kwRows.length} keywords, ${phRows.length} phrases`);
+  } catch(err) {
+    setStatus('err', 'Connection failed');
+    showToast('Connection error: ' + err.message, '⚠');
+    console.error(err);
+  }
+}
+
+function saveConfig() {
+  const url = document.getElementById('cfg-url').value.trim().replace(/\/$/, '');
+  const key = document.getElementById('cfg-key').value.trim();
+  const err = document.getElementById('cfg-error');
+  if (!url || !key) { err.style.display='block'; err.textContent='Both fields are required.'; return; }
+  if (!url.startsWith('https://')) { err.style.display='block'; err.textContent='URL must start with https://'; return; }
+  err.style.display='none';
+  SB_URL = url; SB_KEY = key;
+  localStorage.setItem('tr_sb_url', url);
+  localStorage.setItem('tr_sb_key', key);
+  showView('intake', document.getElementById('nav-intake'));
+  connect();
+}
+
+// ═══════════════════════════════════════════════════════
+//  ROUTING ENGINE
+// ═══════════════════════════════════════════════════════
+function scoreTicket(text) {
+  const t = text.toLowerCase(), scores = {};
+  for (const [team, data] of Object.entries(kwData)) {
+    let score = 0; const matched = [], matchedPhrases = [];
+    for (const ph of (data.phrases||[])) { if (t.includes(ph)) { score+=3; matchedPhrases.push(ph); } }
+    for (const kw of (data.keywords||[])) { if (t.includes(kw)) { score+=kw.length>8?2:1; matched.push(kw); } }
+    scores[team] = { score, matched, matchedPhrases };
+  }
+  const sorted = Object.entries(scores).sort((a,b)=>b[1].score-a[1].score);
+  const max = sorted[0]?.[1].score || 0;
+  const rec = max > 0 ? sorted[0][0] : 'Review Needed';
+  const kwTotal = sorted.reduce((s,[,v])=>s+v.matched.length, 0);
+  const conf = max > 0 ? Math.min(0.98, max/(max+kwTotal*0.4+2)) : 0.28;
+  return { recommended:rec, confidence:conf, scores:sorted.slice(0,8),
+           matched: max>0 ? sorted[0][1].matched : [],
+           matchedPhrases: max>0 ? sorted[0][1].matchedPhrases : [] };
+}
+
+const EMPTY_HTML = `<div class="empty-state"><div class="big-icon">⇄</div><p>Paste a ticket summary and click <strong>Route ticket</strong> to get a recommendation.</p></div>`;
+
+function runRoute() {
+  const text = document.getElementById('f-text').value.trim();
+  if (!text) { showToast('Paste a ticket summary first.','⚠'); return; }
+  if (!connected) { showToast('Not connected to Supabase yet.','⚠'); return; }
+  const id = document.getElementById('f-id').value.trim();
+  const result = scoreTicket(text);
+  lastRoute = { id: id||'(no ID)', text, ...result };
+
+  const cp = Math.round(result.confidence*100);
+  const cc = cp>=75?'conf-high':cp>=55?'conf-mid':'conf-low';
+  const cl = cp>=75?'High confidence':cp>=55?'Medium confidence':'Low — review';
+
+  const kwHtml = [
+    ...result.matchedPhrases.map(p=>`<span class="ph-chip">🔗 ${esc(p)}</span>`),
+    ...result.matched.map(k=>`<span class="kw-chip">${esc(k)}</span>`)
+  ].join('') || '<span style="font-size:12px;color:var(--text3)">no matches</span>';
+
+  let reason = '';
+  if (result.matchedPhrases.length) reason += `Phrase match: <b>${esc(result.matchedPhrases[0])}</b>. `;
+  if (result.matched.length) reason += `Keywords: <b>${esc(result.matched.slice(0,4).join(', '))}</b>. `;
+  reason += `Routed to <b>${esc(result.recommended)}</b>.`;
+  if (cp<55) reason += ' <span style="color:var(--amber)">Low confidence — manual review recommended.</span>';
+
+  const kb = kbData[result.recommended];
+  const kbMini = kb && result.recommended!=='Review Needed' ? `
+    <div class="card" style="border-color:rgba(34,211,238,.2)">
+      <div class="card-title" style="color:var(--teal)">📖 ${esc(result.recommended)}</div>
+      <div class="team-kb-mini">
+        <div class="team-kb-mini-desc">${kb.description ? esc(kb.description) : '<em style="color:var(--text3)">No description yet.</em>'}</div>
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px">Responsibilities</div>
+        <div class="resp-chips">${(kb.responsibilities||[]).slice(0,6).map(r=>`<span class="resp-chip">${esc(r)}</span>`).join('') || '<span style="font-size:12px;color:var(--text3)">None listed.</span>'}</div>
+        ${kb.autoTickets&&kb.autoTickets.length ? `
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin:8px 0 5px">Example tickets</div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            ${kb.autoTickets.slice(0,3).map(t=>`<div style="font-size:12px;color:var(--text2);background:var(--bg3);padding:4px 8px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="font-family:var(--mono);font-size:11px;color:var(--accent);margin-right:6px">${esc(t.id)}</span>${esc(t.summary)}</div>`).join('')}
+          </div>` : ''}
+      </div>
+    </div>` : '';
+
+  const similar = ticketLog.filter(t=>t.final===result.recommended&&t.correct==='Yes').slice(0,3);
+  const simHtml = similar.length
+    ? similar.map(s=>`<div class="similar-item"><div class="similar-id">${esc(s.id)}</div><div class="similar-summary" title="${esc(s.summary)}">${esc(s.summary)}</div><span class="similar-team-chip">${esc(s.final)} ✓</span></div>`).join('')
+    : `<div style="font-size:12px;color:var(--text3)">No confirmed similar tickets yet.</div>`;
+
+  const maxScore = result.scores[0]?.[1].score||1;
+  const bars = result.scores.filter(([,v])=>v.score>0).slice(0,7).map(([team,v],i)=>`
+    <div class="score-row">
+      <span class="score-team">${esc(team)}</span>
+      <div class="score-track"><div class="score-fill ${i===0?'top':''}" style="width:${Math.round(v.score/maxScore*100)}%"></div></div>
+      <span class="score-val">${v.score}</span>
+    </div>`).join('') || `<div style="font-size:12px;color:var(--text3)">No keywords matched.</div>`;
+
+  document.getElementById('intake-right').innerHTML = `
+    <div class="card">
+      <div class="card-title">Routing recommendation</div>
+      <div class="rec-team-row"><span class="rec-team-name">${esc(result.recommended)}</span><span class="conf-pill ${cc}">${cl} | ${cp}%</span></div>
+      <div class="kw-row">${kwHtml}</div>
+      <div class="rec-reason">${reason}</div>
+      ${cp<55?`<div style="margin-top:12px;padding:10px 12px;background:var(--amber-bg);border-radius:6px;font-size:12px;color:var(--amber)">⚠ Clarifying questions:<br><br><b>1.</b> Which system is directly affected?<br><b>2.</b> Is this an access request or a system failure?<br><b>3.</b> What was the user doing when the issue occurred?</div>`:''}
+    </div>
+    ${kbMini}
+    <div class="card"><div class="card-title">Team score breakdown</div><div class="score-list">${bars}</div></div>
+    <div class="card"><div class="card-title">Similar confirmed tickets</div><div class="similar-list">${simHtml}</div></div>
+    <div class="card"><div class="card-title">Actions</div><div class="action-row">
+      <button class="btn btn-sm btn-primary" onclick="openLogModal()">✓ Log this ticket</button>
+      <button class="btn btn-sm btn-ghost" onclick="clearIntake()">✕ Clear</button>
+    </div></div>`;
+}
+
+function clearIntake() {
+  ['f-id','f-text','f-reviewer','f-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-override').value='';
+  document.getElementById('intake-right').innerHTML=EMPTY_HTML;
+  lastRoute=null;
+}
+
+// ═══════════════════════════════════════════════════════
+//  LOG MODAL
+// ═══════════════════════════════════════════════════════
+function openLogModal() {
+  if (!connected) { showToast('Connect to Supabase first.','⚠'); return; }
+  const allTeams = [...Object.keys(kwData), 'Review Needed'];
+  const rec = lastRoute?.recommended || '';
+  document.getElementById('m-id').value = lastRoute?.id || document.getElementById('f-id').value || '';
+  document.getElementById('m-suggested').value = rec;
+  document.getElementById('m-reviewer').value = document.getElementById('f-reviewer').value || '';
+  document.getElementById('m-notes').value = document.getElementById('f-notes').value || '';
+  document.getElementById('m-correct').value = '';
+  document.getElementById('m-status').value = 'New';
+  document.getElementById('m-final').innerHTML = allTeams.map(t=>`<option${t===rec?' selected':''}>${esc(t)}</option>`).join('');
+  document.getElementById('log-save-btn').onclick = logTicket;
+  document.getElementById('log-modal').classList.add('open');
+}
+
+function cancelLogModal() {
+  document.getElementById('log-save-btn').onclick = logTicket;
+  closeModal('log-modal');
+}
+
+async function logTicket() {
+  const id        = document.getElementById('m-id').value.trim() || 'UNK-'+Date.now();
+  const suggested = document.getElementById('m-suggested').value;
+  const final     = document.getElementById('m-final').value;
+  const correct   = document.getElementById('m-correct').value;
+  const status    = document.getElementById('m-status').value;
+  const reviewer  = document.getElementById('m-reviewer').value.trim();
+  const notes     = document.getElementById('m-notes').value.trim();
+  const text      = lastRoute?.text || document.getElementById('f-text').value;
+  const confidence = lastRoute?.confidence || 0;
+  const routeChanged    = !!(final && suggested !== final);
+  const needsCalibration = routeChanged || confidence < 0.6;
+
+  const ticket = { id, summary:text, suggested, final, correct, status,
+    date: new Date().toISOString().slice(0,10), reviewer, notes, confidence,
+    route_changed: routeChanged, needs_calibration: needsCalibration };
+
+  const btn = document.getElementById('log-save-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    await sb.upsert('ticket_log', ticket);
+    ticketLog.unshift({ ...ticket, routeChanged, needsCalibration });
+    autoPopulateKB();
+    updateBadge();
+    closeModal('log-modal');
+    showToast('Ticket logged to Supabase.');
+    clearIntake();
+  } catch(err) {
+    showToast('Save failed: '+err.message,'⚠');
+  } finally {
+    btn.disabled=false; btn.textContent='Save to log';
+    document.getElementById('log-save-btn').onclick = logTicket;
+  }
+}
+
+async function editTicketModal(id) {
+  const t = ticketLog.find(r=>r.id===id); if(!t) return;
+  const allTeams = [...Object.keys(kwData),'Review Needed'];
+  document.getElementById('m-id').value        = t.id;
+  document.getElementById('m-suggested').value = t.suggested||'';
+  document.getElementById('m-final').innerHTML = allTeams.map(tm=>`<option${tm===(t.final||t.suggested)?' selected':''}>${esc(tm)}</option>`).join('');
+  document.getElementById('m-correct').value   = t.correct||'';
+  document.getElementById('m-status').value    = t.status;
+  document.getElementById('m-reviewer').value  = t.reviewer||'';
+  document.getElementById('m-notes').value     = t.notes||'';
+
+  const btn = document.getElementById('log-save-btn');
+  btn.onclick = async function() {
+    const updates = {
+      final:    document.getElementById('m-final').value,
+      correct:  document.getElementById('m-correct').value,
+      status:   document.getElementById('m-status').value,
+      reviewer: document.getElementById('m-reviewer').value,
+      notes:    document.getElementById('m-notes').value,
+    };
+    updates.route_changed    = !!(updates.final && t.suggested !== updates.final);
+    updates.needs_calibration = updates.route_changed || t.confidence < 0.6;
+    btn.disabled=true; btn.textContent='Saving…';
+    try {
+      await sb.patch('ticket_log', t.id, updates);
+      Object.assign(t, updates, { routeChanged: updates.route_changed, needsCalibration: updates.needs_calibration });
+      closeModal('log-modal');
+      renderQueue(); updateBadge(); autoPopulateKB();
+      showToast('Ticket updated.');
+    } catch(err) { showToast('Update failed: '+err.message,'⚠'); }
+    finally { btn.disabled=false; btn.textContent='Save to log'; btn.onclick=logTicket; }
+  };
+  document.getElementById('log-modal').classList.add('open');
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ═══════════════════════════════════════════════════════
+//  QUEUE
+// ═══════════════════════════════════════════════════════
+async function loadQueue(force=false) {
+  if (!connected) return;
+  try {
+    const rows = await sb.get('ticket_log','select=*&order=created_at.desc&limit=500');
+    ticketLog = rows.map(r=>({
+      id:r.id, summary:r.summary, suggested:r.suggested, final:r.final,
+      correct:r.correct, status:r.status, date:r.date, reviewer:r.reviewer,
+      notes:r.notes, confidence:parseFloat(r.confidence)||0,
+      routeChanged:r.route_changed, needsCalibration:r.needs_calibration,
+    }));
+    autoPopulateKB(); updateBadge();
+    renderQueue();
+    if(force) showToast('Queue refreshed.');
+  } catch(err) { showToast('Queue load failed: '+err.message,'⚠'); }
+}
+
+function statusClass(s){ return {New:'s-new','Needs Follow-up':'s-follow','Review Needed':'s-review',Closed:'s-closed'}[s]||'s-follow'; }
+function confColor(c){ const p=Math.round(c*100); return p>=75?'var(--green)':p>=55?'var(--amber)':'var(--red)'; }
+function ageDays(d){ return Math.max(0,Math.floor((new Date()-new Date(d))/86400000)); }
+
+function renderQueue() {
+  let rows = ticketLog;
+  if (qFilter==='follow') rows=rows.filter(r=>r.status==='Needs Follow-up');
+  if (qFilter==='review') rows=rows.filter(r=>r.suggested==='Review Needed'||r.needsCalibration);
+  if (qFilter==='new')    rows=rows.filter(r=>r.status==='New');
+  if (qSearch) { const q=qSearch.toLowerCase(); rows=rows.filter(r=>r.id.toLowerCase().includes(q)||r.summary.toLowerCase().includes(q)||(r.suggested||'').toLowerCase().includes(q)); }
+  document.getElementById('queue-count').textContent = rows.length+' ticket'+(rows.length!==1?'s':'');
+  document.getElementById('queue-tbody').innerHTML = rows.map(r=>`<tr>
+    <td class="td-id">${esc(r.id)}</td>
+    <td class="td-summary" title="${esc(r.summary)}">${esc(r.summary)}</td>
+    <td style="font-size:12px">${esc(r.suggested||'—')}</td>
+    <td style="font-size:12px;color:${r.final&&r.final!==r.suggested?'var(--amber)':'var(--text2)'}">${esc(r.final||'—')}</td>
+    <td><span class="status-chip ${statusClass(r.status)}">${esc(r.status)}</span></td>
+    <td class="td-age">${ageDays(r.date)}d</td>
+    <td style="font-family:var(--mono);font-size:12px"><span class="conf-dot" style="background:${confColor(r.confidence)}"></span>${Math.round(r.confidence*100)}%</td>
+    <td><div class="row-actions"><button class="btn btn-sm btn-ghost" data-tid="${esc(r.id)}" onclick="editTicketModal(this.dataset.tid)">Edit</button></div></td>
+  </tr>`).join('');
+}
+
+function setQFilter(f,el){ qFilter=f; document.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active')); el.classList.add('active'); renderQueue(); }
+function filterQueue(v){ qSearch=v; renderQueue(); }
+
+// ═══════════════════════════════════════════════════════
+//  DASHBOARD
+// ═══════════════════════════════════════════════════════
+function refreshDashboard() {
+  const log=ticketLog;
+  const reviewed=log.filter(t=>t.correct), correct=reviewed.filter(t=>t.correct==='Yes');
+  const accuracy=reviewed.length>0?Math.round(correct.length/reviewed.length*100):0;
+  const open=log.filter(t=>t.status!=='Closed').length;
+  const changes=log.filter(t=>t.routeChanged).length;
+  const avgConf=log.length>0?Math.round(log.reduce((s,t)=>s+t.confidence,0)/log.length*100):0;
+  document.getElementById('d-accuracy').textContent=accuracy+'%';
+  document.getElementById('d-acc-sub').textContent=reviewed.length+' reviewed';
+  document.getElementById('d-open').textContent=open;
+  document.getElementById('d-changes').textContent=changes;
+  document.getElementById('d-avgconf').textContent=avgConf+'%';
+
+  const tv={}; log.forEach(t=>{tv[t.suggested]=(tv[t.suggested]||0)+1;});
+  const maxV=Math.max(...Object.values(tv),1);
+  document.getElementById('d-team-scores').innerHTML=Object.entries(tv).sort((a,b)=>b[1]-a[1]).slice(0,12)
+    .map(([team,n],i)=>`<div class="score-row"><span class="score-team">${esc(team)}</span><div class="score-track"><div class="score-fill ${i===0?'top':''}" style="width:${Math.round(n/maxV*100)}%"></div></div><span class="score-val">${n}</span></div>`).join('');
+
+  const high=log.filter(t=>t.confidence>=.75).length, mid=log.filter(t=>t.confidence>=.55&&t.confidence<.75).length, low=log.filter(t=>t.confidence<.55).length;
+  document.getElementById('d-conf-dist').innerHTML=[
+    {label:'High ≥75%',n:high,c:'var(--green)'},{label:'Medium 55–75%',n:mid,c:'var(--amber)'},{label:'Low <55%',n:low,c:'var(--red)'}
+  ].map(x=>`<div class="score-row"><span class="score-team" style="color:${x.c}">● ${x.label}</span><div class="score-track"><div class="score-fill" style="width:${log.length>0?Math.round(x.n/log.length*100):0}%;background:${x.c}"></div></div><span class="score-val">${x.n}</span></div>`).join('');
+
+  const cal=log.filter(t=>t.needsCalibration), rvN=log.filter(t=>t.suggested==='Review Needed').length;
+  const mis=log.filter(t=>!t.reviewer&&t.status!=='New').length, mr=log.filter(t=>t.routeChanged);
+  const top=mr.length?`${esc(mr[0].suggested)} → ${esc(mr[0].final)}`:'None';
+  document.getElementById('d-coaching').innerHTML=[
+    {c:'var(--amber)',l:'Calibration flagged',   v:cal.length+' tickets',a:'Review wording vs. final team to tune scoring.'},
+    {c:'var(--red)',  l:'Low-confidence tickets', v:low+' tickets',a:'Compare recurring words to final owners; update keywords.'},
+    {c:'var(--amber)',l:'Review Needed fallbacks',v:rvN+' tickets',a:'Extract keywords from these to reduce unrouted tickets.'},
+    {c:'var(--text3)',l:'Missing reviewer info',  v:mis+' tickets',a:'Complete Reviewed By and Review Date fields.'},
+    {c:'var(--red)',  l:'Top misroute pair',       v:top,a:'Tune source-team keywords for this pair.'},
+  ].map(c=>`<div class="coach-item"><div class="coach-dot" style="background:${c.c}"></div><div><div class="coach-label">${c.l} — <span class="coach-val">${c.v}</span></div><div class="coach-action">${c.a}</div></div></div>`).join('');
+  document.getElementById('d-tuning-tbody').innerHTML=cal.map(t=>`<tr>
+    <td class="td-id">${esc(t.id)}</td><td style="font-size:12px">${esc(t.suggested)}</td>
+    <td style="font-size:12px;color:${t.routeChanged?'var(--amber)':'var(--text2)'}">${esc(t.final||'—')}</td>
+    <td style="font-size:12px;color:var(--text3)">${t.routeChanged?'Route changed':'Low confidence'}</td>
+    <td style="font-family:var(--mono);font-size:12px"><span class="conf-dot" style="background:${confColor(t.confidence)}"></span>${Math.round(t.confidence*100)}%</td>
+    <td><button class="btn btn-sm btn-ghost" data-tid="${esc(t.id)}" onclick="editTicketModal(this.dataset.tid)">Review</button></td>
+  </tr>`).join('')||`<tr><td colspan="6" style="color:var(--text3);font-size:12px;text-align:center;padding:18px">No calibration items.</td></tr>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  KEYWORDS & PHRASES
+// ═══════════════════════════════════════════════════════
+function filterKwTeams(v){ kwFilter=v.toLowerCase(); renderKeywords(); }
+
+function renderKeywords() {
+  const entries = Object.entries(kwData).filter(([team])=>!kwFilter||team.toLowerCase().includes(kwFilter));
+  const c = document.getElementById('kw-teams-container');
+  if (!entries.length) { c.innerHTML=`<div style="font-size:13px;color:var(--text3)">No teams match "${esc(kwFilter)}"</div>`; return; }
+  c.innerHTML = entries.map(([team, data]) => {
+    const t = tid(team);
+    return `<div class="kw-team-card">
+      <div class="kw-team-header">
+        <span class="kw-team-name-display" title="${esc(team)}">${esc(team)}</span>
+        <button class="btn btn-sm btn-ghost" style="color:var(--red)" data-team="${esc(team)}" onclick="deleteTeam(this.dataset.team)" title="Delete">🗑</button>
+      </div>
+      <div class="kw-section-label">Keywords</div>
+      <div class="kw-chips">
+        ${(data.keywords||[]).map(kw=>`<span class="kw-edit-chip">${esc(kw)}<span class="kw-remove" data-team="${esc(team)}" data-type="kw" data-val="${esc(kw)}" onclick="removeKw(this.dataset.team,this.dataset.type,this.dataset.val)">×</span></span>`).join('')}
+      </div>
+      <div class="kw-add-row">
+        <input class="kw-add-input" type="text" placeholder="add keyword…" id="kwin-${t}" data-team="${esc(team)}" data-type="kw"
+          onkeydown="if(event.key==='Enter'){addKw(this.dataset.team,this.dataset.type,this.value,this);event.preventDefault()}">
+        <button class="btn btn-sm" data-team="${esc(team)}" data-t="${t}" data-type="kw"
+          onclick="addKw(this.dataset.team,this.dataset.type,document.getElementById('kwin-'+this.dataset.t).value,document.getElementById('kwin-'+this.dataset.t))">+ Add</button>
+      </div>
+      <div class="kw-section-label" style="margin-top:10px">Key phrases</div>
+      <div class="kw-chips">
+        ${(data.phrases||[]).map(ph=>`<span class="ph-edit-chip">🔗 ${esc(ph)}<span class="kw-remove" data-team="${esc(team)}" data-type="ph" data-val="${esc(ph)}" onclick="removeKw(this.dataset.team,this.dataset.type,this.dataset.val)">×</span></span>`).join('')}
+      </div>
+      <div class="kw-add-row">
+        <input class="kw-add-input" type="text" placeholder="add key phrase…" id="phin-${t}" data-team="${esc(team)}" data-type="ph"
+          onkeydown="if(event.key==='Enter'){addKw(this.dataset.team,this.dataset.type,this.value,this);event.preventDefault()}">
+        <button class="btn btn-sm" data-team="${esc(team)}" data-t="${t}" data-type="ph"
+          onclick="addKw(this.dataset.team,this.dataset.type,document.getElementById('phin-'+this.dataset.t).value,document.getElementById('phin-'+this.dataset.t))">+ Add</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function addKw(team, type, val, el) {
+  const v = val.trim().toLowerCase(); if (!v) return;
+  if (!kwData[team]) return;
+  const arr = type==='ph' ? kwData[team].phrases : kwData[team].keywords;
+  if (arr.includes(v)) { showToast(`"${v}" already exists.`,'ℹ'); if(el) el.value=''; return; }
+  try {
+    const table = type==='ph' ? 'phrases' : 'keywords';
+    const body  = type==='ph' ? {team_name:team, phrase:v} : {team_name:team, keyword:v};
+    await sb.upsert(table, body);
+    arr.push(v);
+    renderKeywords();
+    showToast(`Added "${v}" to ${team}`);
+  } catch(err) { showToast('Save failed: '+err.message,'⚠'); }
+  if (el) el.value='';
+}
+
+async function removeKw(team, type, val) {
+  if (!kwData[team]) return;
+  const table  = type==='ph' ? 'phrases' : 'keywords';
+  const col    = type==='ph' ? 'phrase'  : 'keyword';
+  try {
+    await sb.del(table, `team_name=eq.${encodeURIComponent(team)}&${col}=eq.${encodeURIComponent(val)}`);
+    if (type==='ph') kwData[team].phrases  = kwData[team].phrases.filter(k=>k!==val);
+    else             kwData[team].keywords = kwData[team].keywords.filter(k=>k!==val);
+    renderKeywords();
+    showToast(`Removed "${val}"`);
+  } catch(err) { showToast('Delete failed: '+err.message,'⚠'); }
+}
+
+async function deleteTeam(team) {
+  if (!confirm(`Delete team "${team}" and all its keywords, phrases, and responsibilities from Supabase? This cannot be undone.`)) return;
+  try {
+    await Promise.all([
+      sb.del('teams',           `team_name=eq.${encodeURIComponent(team)}`),
+      sb.del('keywords',        `team_name=eq.${encodeURIComponent(team)}`),
+      sb.del('phrases',         `team_name=eq.${encodeURIComponent(team)}`),
+      sb.del('responsibilities',`team_name=eq.${encodeURIComponent(team)}`),
+    ]);
+    delete kwData[team]; delete kbData[team];
+    renderKeywords(); renderKB(); updateOverrideDropdown();
+    showToast(`Deleted "${team}"`);
+  } catch(err) { showToast('Delete failed: '+err.message,'⚠'); }
+}
+
+function openAddTeamModal() { document.getElementById('modal-add-team').classList.add('open'); }
+
+async function addTeam() {
+  const name = document.getElementById('at-name').value.trim();
+  if (!name) { showToast('Team name required.','⚠'); return; }
+  if (kwData[name]) { showToast('Team already exists.','⚠'); return; }
+  const kws  = document.getElementById('at-kw').value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
+  const phs  = document.getElementById('at-ph').value.split('\n').map(s=>s.trim().toLowerCase()).filter(Boolean);
+  const desc = document.getElementById('at-desc').value.trim();
+  const btn  = document.querySelector('#modal-add-team .btn-primary');
+  btn.disabled=true; btn.textContent='Saving…';
+  try {
+    await sb.upsert('teams', {team_name:name, description:desc});
+    if (kws.length) await sb.upsert('keywords', kws.map(k=>({team_name:name,keyword:k})));
+    if (phs.length) await sb.upsert('phrases',  phs.map(p=>({team_name:name,phrase:p})));
+    kwData[name] = {keywords:kws, phrases:phs};
+    kbData[name] = {description:desc, responsibilities:[], autoTickets:[]};
+    closeModal('modal-add-team');
+    ['at-name','at-kw','at-ph','at-desc'].forEach(id=>document.getElementById(id).value='');
+    renderKeywords(); renderKB(); updateOverrideDropdown();
+    showToast(`Added team "${name}"`);
+  } catch(err) { showToast('Save failed: '+err.message,'⚠'); }
+  finally { btn.disabled=false; btn.textContent='Add team'; }
+}
+
+// ═══════════════════════════════════════════════════════
+//  KNOWLEDGE BASE
+// ═══════════════════════════════════════════════════════
+function autoPopulateKB() {
+  for (const team of Object.keys(kbData)) {
+    kbData[team].autoTickets = ticketLog
+      .filter(t=>t.final===team && t.correct==='Yes').slice(0,10)
+      .map(t=>({id:t.id, summary:t.summary}));
+  }
+}
+
+async function loadKB(force=false) {
+  if (!connected) return;
+  try {
+    const [teamRows, respRows] = await Promise.all([
+      sb.get('teams','select=team_name,description&order=team_name'),
+      sb.get('responsibilities','select=team_name,responsibility&order=team_name'),
+    ]);
+    teamRows.forEach(r=>{
+      if (kbData[r.team_name]) kbData[r.team_name].description = r.description||'';
+    });
+    Object.values(kbData).forEach(kb=>kb.responsibilities=[]);
+    respRows.forEach(r=>{ if(kbData[r.team_name]) kbData[r.team_name].responsibilities.push(r.responsibility); });
+    renderKB();
+    if (force) showToast('Knowledge base refreshed.');
+  } catch(err) { showToast('KB load failed: '+err.message,'⚠'); }
+}
+
+function renderKB() {
+  const c = document.getElementById('kb-container');
+  c.innerHTML = Object.entries(kbData).map(([team, kb]) => {
+    const t = 'kb-'+tid(team);
+    return `<div class="kb-card">
+      <div class="kb-card-header">
+        <span class="kb-team-name">${esc(team)}</span>
+        <button class="btn btn-sm btn-ghost" data-team="${esc(team)}" data-t="${t}" onclick="saveKBDesc(this.dataset.team,this.dataset.t)">Save</button>
+      </div>
+      <div class="kb-section-label">Description</div>
+      <textarea class="kb-desc-area" id="kbdesc-${t}" placeholder="Describe what this team handles…">${esc(kb.description||'')}</textarea>
+      <div class="kb-section-label">
+        Responsibilities
+        <button class="btn btn-sm btn-ghost" style="padding:2px 6px;font-size:11px" data-team="${esc(team)}" data-t="${t}" onclick="addKBResp(this.dataset.team,this.dataset.t)">+ Add</button>
+      </div>
+      <div class="kb-resp-chips">
+        ${(kb.responsibilities||[]).map(r=>`<span class="kb-resp-chip-edit">${esc(r)}<span class="kw-remove" data-team="${esc(team)}" data-resp="${esc(r)}" onclick="removeKBResp(this.dataset.team,this.dataset.resp)">×</span></span>`).join('')}
+      </div>
+      <div class="kw-add-row" style="margin-top:8px">
+        <input class="kw-add-input" type="text" placeholder="add responsibility…" id="kbresp-in-${t}"
+          data-team="${esc(team)}" data-t="${t}"
+          onkeydown="if(event.key==='Enter'){addKBResp(this.dataset.team,this.dataset.t);event.preventDefault()}">
+      </div>
+      ${kb.autoTickets&&kb.autoTickets.length ? `
+        <div class="kb-section-label" style="margin-top:10px">Example tickets <span class="kb-auto-chip">auto</span></div>
+        <div class="kb-ticket-list">
+          ${kb.autoTickets.map(t=>`<div class="kb-ticket-item"><span class="kb-ticket-id">${esc(t.id)}</span>${esc(t.summary)}</div>`).join('')}
+        </div>` : `<div style="font-size:12px;color:var(--text3);margin-top:10px">No confirmed tickets yet.</div>`}
+    </div>`;
+  }).join('');
+}
+
+async function saveKBDesc(team, t) {
+  const desc = document.getElementById('kbdesc-'+t).value.trim();
+  try {
+    await sb.upsert('teams', {team_name:team, description:desc});
+    if (kbData[team]) kbData[team].description = desc;
+    showToast(`Saved description for "${team}"`);
+  } catch(err) { showToast('Save failed: '+err.message,'⚠'); }
+}
+
+async function addKBResp(team, t) {
+  const inp = document.getElementById('kbresp-in-'+t); if (!inp) return;
+  const v = inp.value.trim(); if (!v) return;
+  try {
+    await sb.post('responsibilities', {team_name:team, responsibility:v});
+    if (!kbData[team]) kbData[team]={description:'',responsibilities:[],autoTickets:[]};
+    kbData[team].responsibilities.push(v);
+    inp.value=''; renderKB();
+    showToast(`Added responsibility to ${team}`);
+  } catch(err) { showToast('Save failed: '+err.message,'⚠'); }
+}
+
+async function removeKBResp(team, resp) {
+  try {
+    await sb.del('responsibilities', `team_name=eq.${encodeURIComponent(team)}&responsibility=eq.${encodeURIComponent(resp)}`);
+    if (kbData[team]) kbData[team].responsibilities = kbData[team].responsibilities.filter(r=>r!==resp);
+    renderKB();
+  } catch(err) { showToast('Delete failed: '+err.message,'⚠'); }
+}
+
+// ═══════════════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════════════
+const VIEW_META = {
+  config:   {title:'connection',     crumb:'/ settings', actions:''},
+  intake:   {title:'new_ticket',     crumb:'/ intake',   actions:'<button class="btn btn-primary" onclick="runRoute()">▶ Route ticket</button>'},
+  queue:    {title:'ticket_queue',   crumb:'/ review',   actions:''},
+  dashboard:{title:'dashboard',      crumb:'/ health',   actions:''},
+  keywords: {title:'keywords',       crumb:'/ config',   actions:''},
+  kb:       {title:'knowledge_base', crumb:'/ teams',    actions:''},
+};
+
+function showView(id, navEl) {
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+id).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  if (navEl) navEl.classList.add('active');
+  const m = VIEW_META[id];
+  document.getElementById('topbar-title').textContent = m.title;
+  document.getElementById('topbar-crumb').textContent = m.crumb;
+  document.getElementById('topbar-actions').innerHTML = m.actions;
+  if (id==='queue')     loadQueue();
+  if (id==='dashboard') refreshDashboard();
+  if (id==='keywords')  renderKeywords();
+  if (id==='kb')        { autoPopulateKB(); loadKB(); }
+  if (id==='config') {
+    document.getElementById('cfg-url').value = SB_URL;
+    document.getElementById('cfg-key').value = SB_KEY;
+  }
+}
+
+function updateBadge() {
+  const n = ticketLog.filter(t=>t.status!=='Closed').length;
+  document.getElementById('queue-badge').textContent = connected ? (n||'0') : '—';
+}
+
+function updateOverrideDropdown() {
+  const sel = document.getElementById('f-override');
+  sel.innerHTML = '<option value="">— use recommendation —</option>' +
+    [...Object.keys(kwData),'Review Needed'].map(t=>`<option>${esc(t)}</option>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════
+document.getElementById('log-save-btn').onclick = logTicket;
+document.getElementById('intake-right').innerHTML = EMPTY_HTML;
+
+if (SB_URL && SB_KEY) {
+  connect();
+} else {
+  // Show config view on first run
+  showView('config', document.getElementById('nav-config'));
+}
+</script>
+</body>
+</html>
